@@ -33,7 +33,7 @@ def classify():
     img = Image.open(file.stream)
     
     response = client.models.generate_content(
-        model='gemini-3-flash',
+        model='gemini-2.5-flash',
         contents=[SYSTEM_PROMPT, img]
     )
 
