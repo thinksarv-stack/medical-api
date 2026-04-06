@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Dustbin Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-white p-8">
+    <div class="max-w-md mx-auto bg-slate-800 p-6 rounded-xl shadow-2xl border border-blue-500">
+        <h1 class="text-2xl font-bold text-center text-blue-400 mb-6">🏥 MED-SORT AI</h1>
+        
+        <input type="file" id="imgInput" class="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-500 file:text-white hover:file:bg-blue-600 mb-4">
+        
+        <button onclick="uploadImage()" id="btn" class="w-full bg-blue-600 hover:bg-blue-700 p-3 rounded-lg font-bold transition">ANALYZE WASTE</button>
+
+        <div id="loader" class="hidden mt-4 text-center animate-pulse text-blue-300">AI is thinking...</div>
+        
+        <div id="result" class="hidden mt-6 p-4 rounded-lg text-center font-black text-xl"></div>
+    </div>
+
+    <script>
+        // CHANGE THIS to your Render URL after deploying!
+        const API_URL = "https://your-app-name.onrender.com/classify";
+
+        async function uploadImage() {
+            const file = document.getElementById('imgInput').files[0];
+            if(!file) return alert("Select an image!");
+
+            document.getElementById('loader').classList.remove('hidden');
+            const formData = new FormData();
+            formData.append('image', file);
+
+            try {
+                const res = await fetch(API_URL, { method: 'POST', body: formData });
+                const data = await res.json();
+                
+                const resDiv = document.getElementById('result');
+                resDiv.classList.remove('hidden');
+                resDiv.innerText = `${data.category} (BIN ID: ${data.id})`;
+                resDiv.className = `mt-6 p-4 rounded-lg text-center font-bold ${data.id == 1 ? 'bg-red-600' : 'bg-green-600'}`;
+            } catch (e) {
+                alert("Check your Render URL!");
+            }
+            document.getElementById('loader').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
