@@ -1,47 +1,290 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>AI Dustbin Dashboard</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-slate-900 text-white p-8">
-    <div class="max-w-md mx-auto bg-slate-800 p-6 rounded-xl shadow-2xl border border-blue-500">
-        <h1 class="text-2xl font-bold text-center text-blue-400 mb-6">🏥 MED-SORT AI</h1>
-        
-        <input type="file" id="imgInput" class="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-500 file:text-white hover:file:bg-blue-600 mb-4">
-        
-        <button onclick="uploadImage()" id="btn" class="w-full bg-blue-600 hover:bg-blue-700 p-3 rounded-lg font-bold transition">ANALYZE WASTE</button>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BioShield AI | Waste Classifier</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        :root {
+            --primary: #ff7675;
+            --secondary: #fab1a0;
+            --bg: #0d0d0f;
+            --card-bg: rgba(255, 255, 255, 0.03);
+        }
 
-        <div id="loader" class="hidden mt-4 text-center animate-pulse text-blue-300">AI is thinking...</div>
-        
-        <div id="result" class="hidden mt-6 p-4 rounded-lg text-center font-black text-xl"></div>
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg);
+            color: #f1f2f6;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .dashboard {
+            width: 100%;
+            max-width: 620px;
+            background: var(--card-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 40px;
+            border-radius: 32px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+            margin-top: 20px;
+        }
+
+        h1 {
+            font-weight: 800;
+            font-size: 30px;
+            margin: 0 0 6px 0;
+            background: linear-gradient(to right, #fff, var(--primary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 36px;
+            font-size: 11px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .upload-card {
+            background: rgba(255,255,255,0.02);
+            border: 1px dashed rgba(255,255,255,0.1);
+            padding: 30px 24px;
+            border-radius: 20px;
+            margin-bottom: 16px;
+            text-align: center;
+            transition: border-color 0.3s;
+        }
+
+        .upload-card:hover {
+            border-color: rgba(255, 118, 117, 0.4);
+        }
+
+        .upload-label {
+            display: block;
+            margin-bottom: 14px;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--primary);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        input[type="file"] {
+            width: 100%;
+            color: #aaa;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 13px;
+        }
+
+        .preview-img {
+            max-width: 100%;
+            max-height: 200px;
+            border-radius: 12px;
+            margin-top: 16px;
+            display: none;
+            object-fit: cover;
+        }
+
+        .btn-analyze {
+            width: 100%;
+            background: #fff;
+            color: #000;
+            border: none;
+            padding: 18px;
+            border-radius: 18px;
+            font-size: 15px;
+            font-weight: 800;
+            cursor: pointer;
+            margin-top: 8px;
+            transition: all 0.3s;
+            letter-spacing: 1px;
+        }
+
+        .btn-analyze:hover {
+            background: var(--primary);
+            color: white;
+            transform: translateY(-1px);
+            box-shadow: 0 8px 25px rgba(255,118,117,0.3);
+        }
+
+        .btn-analyze:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .error-box {
+            background: rgba(255,118,117,0.1);
+            border: 1px solid rgba(255,118,117,0.3);
+            color: #ff7675;
+            padding: 16px 20px;
+            border-radius: 14px;
+            margin-top: 20px;
+            font-size: 13px;
+        }
+
+        .report-section {
+            margin-top: 36px;
+            padding: 30px;
+            background: #ffffff;
+            color: #1a1a1a;
+            border-radius: 24px;
+        }
+
+        .report-header {
+            border-bottom: 2px solid #f0f0f0;
+            margin-bottom: 20px;
+            padding-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .report-header h3 {
+            margin: 0;
+            color: #d63031;
+            font-size: 14px;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+        }
+
+        .markdown-body { line-height: 1.7; font-size: 14px; color: #2d2d2d; }
+        .markdown-body h1, .markdown-body h2, .markdown-body h3 { color: #d63031; }
+        .markdown-body strong { color: #1a1a1a; }
+        .markdown-body ul { padding-left: 20px; }
+        .markdown-body li { margin-bottom: 8px; }
+
+        .btn-pdf {
+            width: 100%;
+            background: #2d3436;
+            color: white;
+            border: none;
+            padding: 16px;
+            border-radius: 14px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 20px;
+            letter-spacing: 0.5px;
+            transition: background 0.3s;
+        }
+
+        .btn-pdf:hover { background: #000; }
+
+        .loading-bar {
+            width: 100%;
+            height: 3px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 2px;
+            margin-top: 16px;
+            overflow: hidden;
+            display: none;
+        }
+
+        .loading-bar-inner {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+            border-radius: 2px;
+            animation: loadAnim 2.5s ease-in-out infinite;
+        }
+
+        @keyframes loadAnim {
+            0% { width: 0%; margin-left: 0; }
+            50% { width: 70%; }
+            100% { width: 100%; margin-left: 100%; }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .animate-in { animation: fadeIn 0.5s ease forwards; }
+    </style>
+</head>
+<body>
+
+<div class="dashboard">
+    <h1>BIOSHIELD <span style="font-weight: 300;">AI</span></h1>
+    <div class="subtitle">Medical Waste Classification System</div>
+
+    <form action="/" method="POST" enctype="multipart/form-data" id="mainForm">
+        <div class="upload-card">
+            <label class="upload-label">📸 Upload Waste Image</label>
+            <input type="file" name="waste_image" id="fileInput" accept="image/*" required>
+            <img id="previewImg" class="preview-img" alt="Preview">
+        </div>
+        <button type="submit" class="btn-analyze" id="analyzeBtn">⚡ START AI CLASSIFICATION</button>
+        <div class="loading-bar" id="loadingBar">
+            <div class="loading-bar-inner"></div>
+        </div>
+    </form>
+
+    {% if error %}
+    <div class="error-box">
+        ❌ Error: {{ error }}
+    </div>
+    {% endif %}
+
+    {% if result %}
+    <div class="report-section animate-in" id="reportSection">
+        <div class="report-header">
+            <span>🧬</span>
+            <h3>Classification Result</h3>
+        </div>
+        <div class="markdown-body" id="reportContent"></div>
+
+        <form action="/download-report" method="POST">
+            <input type="hidden" name="report_content" value="{{ report }}">
+            <button type="submit" class="btn-pdf">📥 DOWNLOAD PDF REPORT</button>
+        </form>
     </div>
 
     <script>
-        // CHANGE THIS to your Render URL after deploying!
-        const API_URL = "https://medical-api-ry98.onrender.com";
-
-        async function uploadImage() {
-            const file = document.getElementById('imgInput').files[0];
-            if(!file) return alert("Select an image!");
-
-            document.getElementById('loader').classList.remove('hidden');
-            const formData = new FormData();
-            formData.append('image', file);
-
-            try {
-                const res = await fetch(API_URL, { method: 'POST', body: formData });
-                const data = await res.json();
-                
-                const resDiv = document.getElementById('result');
-                resDiv.classList.remove('hidden');
-                resDiv.innerText = `${data.category} (BIN ID: ${data.id})`;
-                resDiv.className = `mt-6 p-4 rounded-lg text-center font-bold ${data.id == 1 ? 'bg-red-600' : 'bg-green-600'}`;
-            } catch (e) {
-                alert("Check your Render URL!");
-            }
-            document.getElementById('loader').classList.add('hidden');
-        }
+        // Render markdown on page load
+        const rawReport = {{ report | tojson }};
+        document.getElementById('reportContent').innerHTML = marked.parse(rawReport);
     </script>
+    {% endif %}
+</div>
+
+<script>
+    // Image preview
+    document.getElementById('fileInput').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(ev) {
+                const img = document.getElementById('previewImg');
+                img.src = ev.target.result;
+                img.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    // Loading state on submit
+    document.getElementById('mainForm').addEventListener('submit', function() {
+        const btn = document.getElementById('analyzeBtn');
+        btn.textContent = '🔬 ANALYZING...';
+        btn.disabled = true;
+        document.getElementById('loadingBar').style.display = 'block';
+    });
+</script>
+
 </body>
 </html>
