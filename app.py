@@ -1,46 +1,91 @@
-import os
-import json
-from flask import Flask, request, jsonify
+from flask import Flask, render_template, request, send_file
 from flask_cors import CORS
-from google import genai
-from google.genai import types
+from PIL import Image
+import os
+from io import BytesIO
+import base64
 from PIL import Image
 import io
+# PDF Libraries
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+
+import google.generativeai as genai
 
 app = Flask(__name__)
-# IMPORTANT: Allow Netlify to talk to this backend
-CORS(app) 
+CORS(app)
 
-# Initialize Gemini 3 Flash
-API_KEY = os.environ.get("GEMINI_API_KEY")
-client = genai.Client(api_key=API_KEY)
+API_KEY = os.environ.get("GEMINI_API_KEY") # Gets key from Render settings
+genai.configure(api_key=API_KEY)
+model = genai.GenerativeModel("gemini-3.1-flash-lite-preview")
 
-SYSTEM_PROMPT = """
-You are a Medical Waste AI. Classify the image into:
-1. MEDICAL_SHARP (Needles, Scalpels) - ID: 1
-2. GENERAL_SHARP (Glass, Nails) - ID: 2
-3. MEDICAL_WASTE (Gloves, Cotton) - ID: 3
-4. GENERAL_WASTE (Paper, Plastic) - ID: 4
-Output ONLY JSON: {"id": X, "category": "NAME", "reason": "why"}
-"""
 
-@app.route('/classify', methods=['POST'])
-def classify():
-    if 'image' not in request.files:
-        return jsonify({"error": "No image uploaded"}), 400
-    
-    file = request.files['image']
-    img = Image.open(file.stream)
-    
-    response = client.models.generate_content(
-        model='gemini-2.5-flash',
-        contents=[SYSTEM_PROMPT, img]
+@app.route("/", methods=["GET", "POST"])
+def index():
+    if request.method == "POST":
+        try:
+            waste_file = request.files.get("waste_image")
+            if not waste_file:
+                return render_template("index.html", result=False, error="No image uploaded.")
+
+            waste_img = Image.open(waste_file)
+            waste_img.thumbnail((512, 512))
+
+
+            prompt = """
+            Classify this image into exactly one of these categories and respond with ONLY the category name, nothing else: Medical Waste, Medical Sharps, General Sharps, General Waste
+            """
+
+            response = model.generate_content([prompt, waste_img])
+            return render_template("index.html", result=True, report=response.text)
+
+        except Exception as e:
+            print(f"Server Error: {e}")
+            return render_template("index.html", result=False, error=str(e))
+
+    return render_template("index.html", result=False)
+
+
+@app.route("/download-report", methods=["POST"])
+def download_report():
+    report_text = request.form.get("report_content")
+    if not report_text:
+        return "No report content found", 400
+
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4)
+    styles = getSampleStyleSheet()
+
+    title_style = ParagraphStyle(
+        "TitleStyle",
+        parent=styles["Heading1"],
+        fontSize=18,
+        spaceAfter=20,
+        textColor=colors.HexColor("#ff7675"),
     )
 
-    try:
-        return jsonify(json.loads(response.text.strip()))
-    except:
-        return jsonify({"id": 4, "category": "GENERAL_WASTE", "reason": "Error parsing AI response"})
+    story = [
+        Paragraph("MEDICAL WASTE ANALYSIS REPORT", title_style),
+        Spacer(1, 12),
+    ]
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 5000)))
+    clean_text = report_text.replace("**", "").replace("#", "").replace("*", "")
+    for line in clean_text.split("\n"):
+        if line.strip():
+            story.append(Paragraph(line, styles["Normal"]))
+            story.append(Spacer(1, 10))
+
+    doc.build(story)
+    buffer.seek(0)
+    return send_file(
+        buffer,
+        as_attachment=True,
+        download_name="Waste_Classification_Report.pdf",
+        mimetype="application/pdf",
+    )
+
+
+if __name__ == "__main__":
+    app.run(debug=True, port=5000)
