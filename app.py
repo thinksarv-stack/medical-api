@@ -19,7 +19,7 @@ CORS(app)
 
 API_KEY = os.environ.get("GEMINI_API_KEY") # Gets key from Render settings
 genai.configure(api_key=API_KEY)
-model = genai.GenerativeModel("gemini-3.1-flash-lite-preview")
+model = genai.GenerativeModel("gemini-2.5-flash")
 
 
 @app.route("/", methods=["GET", "POST"])
