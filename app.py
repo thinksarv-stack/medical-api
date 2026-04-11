@@ -17,8 +17,8 @@ from openai import OpenAI
 app = Flask(__name__)
 CORS(app)
 
-# Pull from Environment Variables on Render, fallback to string locally
-OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "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")
+# Read API key strictly from Environment Variables (Secure for GitHub)
+OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
 client = OpenAI(
     base_url="https://openrouter.ai/api/v1",
     api_key=OPENROUTER_API_KEY,
