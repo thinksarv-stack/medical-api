@@ -19,6 +19,10 @@ CORS(app)
 
 # Read API key strictly from Environment Variables (Secure for GitHub)
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
+
+if not OPENROUTER_API_KEY:
+    print("WARNING: OPENROUTER_API_KEY environment variable is not set!")
+
 client = OpenAI(
     base_url="https://openrouter.ai/api/v1",
     api_key=OPENROUTER_API_KEY,
