@@ -12,7 +12,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 
-import google.generativeai as genai
+from google import genai
 
 app = Flask(__name__)
 CORS(app)
@@ -23,8 +23,10 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 if not GEMINI_API_KEY:
     print("WARNING: GEMINI_API_KEY environment variable is not set!")
 
-genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel("gemini-3.1-flash-lite-preview")
+try:
+    client = genai.Client(api_key=GEMINI_API_KEY)
+except Exception as e:
+    print(f"WARNING: Failed to initialize Gemini Client: {e}")
 
 
 @app.route("/", methods=["GET", "POST"])
@@ -43,7 +45,10 @@ def index():
             Classify this image into exactly one of these categories and respond with ONLY the category name, nothing else: General, Medical, Hazardous/Chemical, Sharps
             """
 
-            response = model.generate_content([prompt, waste_img])
+            response = client.models.generate_content(
+                model="gemini-3.1-flash-lite-preview",
+                contents=[prompt, waste_img]
+            )
             return render_template("index.html", result=True, report=response.text)
 
         except Exception as e:
