@@ -12,14 +12,17 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 
-import google.generativeai as genai
+from openai import OpenAI
 
 app = Flask(__name__)
 CORS(app)
 
-API_KEY = os.environ.get("GEMINI_API_KEY") # Gets key from Render settings
-genai.configure(api_key=API_KEY)
-model = genai.GenerativeModel("gemini-2.5-flash")
+# Pull from Environment Variables on Render, fallback to string locally
+OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "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")
+client = OpenAI(
+    base_url="https://openrouter.ai/api/v1",
+    api_key=OPENROUTER_API_KEY,
+)
 
 
 @app.route("/", methods=["GET", "POST"])
@@ -35,11 +38,35 @@ def index():
 
 
             prompt = """
-            Classify this image into exactly one of these categories and respond with ONLY the category name, nothing else: Medical Waste, Medical Sharps, General Sharps, General Waste
+            Classify this image into exactly one of these categories and respond with ONLY the category name, nothing else: General, Medical, Hazardous/Chemical, Sharps
             """
 
-            response = model.generate_content([prompt, waste_img])
-            return render_template("index.html", result=True, report=response.text)
+            # Convert PIL image to base64
+            buffered = BytesIO()
+            waste_img.convert('RGB').save(buffered, format="JPEG")
+            img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
+
+            response = client.chat.completions.create(
+                model="meta-llama/llama-3.2-11b-vision-instruct:free",
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": prompt},
+                            {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img_str}"}}
+                        ]
+                    }
+                ],
+                extra_body={
+                    "models": [
+                        "google/gemma-3-12b-it:free",
+                        "openrouter/free"
+                    ]
+                }
+            )
+            
+            report_text = response.choices[0].message.content
+            return render_template("index.html", result=True, report=report_text)
 
         except Exception as e:
             print(f"Server Error: {e}")
