@@ -12,21 +12,19 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 
-from openai import OpenAI
+import google.generativeai as genai
 
 app = Flask(__name__)
 CORS(app)
 
 # Read API key strictly from Environment Variables (Secure for GitHub)
-OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 
-if not OPENROUTER_API_KEY:
-    print("WARNING: OPENROUTER_API_KEY environment variable is not set!")
+if not GEMINI_API_KEY:
+    print("WARNING: GEMINI_API_KEY environment variable is not set!")
 
-client = OpenAI(
-    base_url="https://openrouter.ai/api/v1",
-    api_key=OPENROUTER_API_KEY,
-)
+genai.configure(api_key=GEMINI_API_KEY)
+model = genai.GenerativeModel("gemini-3.1-flash-lite-preview")
 
 
 @app.route("/", methods=["GET", "POST"])
@@ -45,32 +43,8 @@ def index():
             Classify this image into exactly one of these categories and respond with ONLY the category name, nothing else: General, Medical, Hazardous/Chemical, Sharps
             """
 
-            # Convert PIL image to base64
-            buffered = BytesIO()
-            waste_img.convert('RGB').save(buffered, format="JPEG")
-            img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
-
-            response = client.chat.completions.create(
-                model="meta-llama/llama-3.2-11b-vision-instruct:free",
-                messages=[
-                    {
-                        "role": "user",
-                        "content": [
-                            {"type": "text", "text": prompt},
-                            {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img_str}"}}
-                        ]
-                    }
-                ],
-                extra_body={
-                    "models": [
-                        "google/gemma-3-12b-it:free",
-                        "openrouter/free"
-                    ]
-                }
-            )
-            
-            report_text = response.choices[0].message.content
-            return render_template("index.html", result=True, report=report_text)
+            response = model.generate_content([prompt, waste_img])
+            return render_template("index.html", result=True, report=response.text)
 
         except Exception as e:
             print(f"Server Error: {e}")
