@@ -1,6 +1,6 @@
-Flask
-Flask-Cors
-Pillow
-reportlab
-google-generativeai
+flask
+flask-cors
+openai
+pillow
 gunicorn
+reportlab
