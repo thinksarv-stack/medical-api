@@ -1,6 +1,6 @@
 flask
 flask-cors
-openai
+google-genai
 pillow
 gunicorn
 reportlab
