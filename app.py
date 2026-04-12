@@ -42,7 +42,7 @@ def index():
 
 
             prompt = """
-            Classify this image into exactly one of these categories and respond with ONLY the category name, nothing else: General, Medical, Hazardous/Chemical, Sharps
+            Classify this image into exactly one of these categories and respond with ONLY the category name, nothing else: General, Medical, Hazardous/Chemical, Sharps, Hybrid Waste
             """
 
             response = client.models.generate_content(
